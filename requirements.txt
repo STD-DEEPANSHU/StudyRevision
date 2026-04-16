@@ -1,6 +1,9 @@
-pyTelegramBotAPI==4.15.4
+pyTelegramBotAPI
+pymongo
 pdfplumber
 requests
 beautifulsoup4
 apscheduler
 g4f
+pytesseract
+Pillow
