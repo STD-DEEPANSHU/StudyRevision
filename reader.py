@@ -9,9 +9,9 @@ def read_pdf(path):
             t = p.extract_text()
             if t:
                 text += t
-    return text
+    return text[:10000]
 
 def read_website(url):
-    res = requests.get(url)
+    res = requests.get(url, timeout=10)
     soup = BeautifulSoup(res.text, "html.parser")
-    return soup.get_text()
+    return soup.get_text()[:10000]
