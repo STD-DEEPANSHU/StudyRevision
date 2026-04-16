@@ -1,19 +1,22 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
-from config import START_HOUR, END_HOUR, SEND_INTERVAL_MINUTES
+from config import START_HOUR, END_HOUR, SEND_INTERVAL_MIN
+from database import users
+from bot import send_revision_to_user
 
 scheduler = BackgroundScheduler()
 
 def can_send():
-    now = datetime.now().hour
-    return START_HOUR <= now <= END_HOUR
+    h = datetime.now().hour
+    return START_HOUR <= h <= END_HOUR
 
-def start_scheduler(send_function):
-    scheduler.add_job(
-        send_function,
-        'interval',
-        minutes=SEND_INTERVAL_MINUTES,
-        max_instances=1,
-        coalesce=True
-    )
+def job():
+    if not can_send():
+        return
+
+    for u in users.find():
+        send_revision_to_user(u["user_id"])
+
+def start():
+    scheduler.add_job(job, 'interval', minutes=SEND_INTERVAL_MIN)
     scheduler.start()
