@@ -1,13 +1,28 @@
+from pymongo import MongoClient
+from config import MONGO_URI
 import random
 
-questions_db = []
+client = MongoClient(MONGO_URI)
+db = client["revision_bot"]
 
-def add_questions(q):
-    if q and isinstance(q, str):
-        questions_db.append(q)
+users = db["users"]
+questions = db["questions"]
 
-def get_question():
-    if not questions_db:
+def save_user(user_id):
+    users.update_one(
+        {"user_id": user_id},
+        {"$set": {"user_id": user_id}},
+        upsert=True
+    )
+
+def add_question(user_id, q):
+    questions.insert_one({
+        "user_id": user_id,
+        "q": q
+    })
+
+def get_question(user_id):
+    qs = list(questions.find({"user_id": user_id}))
+    if not qs:
         return None
-    
-    return random.choice(questions_db)
+    return random.choice(qs)["q"]
