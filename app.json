@@ -1,15 +1,24 @@
 {
-  "name": "Auto Revision Bot",
-  "description": "Telegram bot for automated revision using AI",
+  "name": "AI Medical Revision Bot",
+  "description": "Fully automatic AI-powered Telegram study bot with revision, memory, and chatbot (English + Hindi)",
   "repository": "https://github.com/YOUR_USERNAME/auto-revision-bot",
-  "keywords": ["telegram", "bot", "ai", "revision"],
+  "keywords": [
+    "telegram",
+    "bot",
+    "ai",
+    "revision",
+    "medical",
+    "education",
+    "mongodb",
+    "automation"
+  ],
   "env": {
     "BOT_TOKEN": {
-      "description": "Telegram Bot Token",
+      "description": "Telegram Bot Token from BotFather",
       "required": true
     },
-    "CHAT_ID": {
-      "description": "Your Telegram Chat ID",
+    "MONGO_URI": {
+      "description": "MongoDB connection string (Atlas)",
       "required": true
     }
   },
@@ -18,5 +27,10 @@
       "quantity": 1,
       "size": "basic"
     }
-  }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ]
 }
