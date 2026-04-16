@@ -2,11 +2,11 @@ import pdfplumber
 import requests
 from bs4 import BeautifulSoup
 
-def read_pdf(file):
+def read_pdf(path):
     text = ""
-    with pdfplumber.open(file) as pdf:
-        for page in pdf.pages:
-            t = page.extract_text()
+    with pdfplumber.open(path) as pdf:
+        for p in pdf.pages:
+            t = p.extract_text()
             if t:
                 text += t
     return text
