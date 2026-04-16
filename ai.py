@@ -1,27 +1,68 @@
 import g4f
 
+# -------- Q&A GENERATOR --------
 def generate_qa(content):
     prompt = f"""
-    Generate SSC/UPSC level questions and answers.
+    You are a medical teacher.
 
-    Focus:
-    - Important facts
-    - Concept clarity
-    - Exam pattern
+    Generate 5 important questions.
+
+    Rules:
+    - English + Hindi answer
+    - Add example
+    - Exam focused
 
     Content:
-    {content[:3000]}
+    {content}
 
     Format:
     Q:
-    A:
+    EN:
+    HI:
+    EX:
+    """
+
+    try:
+        res = g4f.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return parse_qa(res)
+    except:
+        return []
+
+def parse_qa(text):
+    blocks = text.split("Q:")
+    result = []
+
+    for b in blocks:
+        if "EN:" in b:
+            result.append("Q:" + b.strip())
+
+    return result
+
+
+# -------- CHATBOT --------
+def ask_ai(memory, question):
+    prompt = f"""
+    You are a medical AI tutor.
+
+    User past context:
+    {memory}
+
+    Answer question below in:
+    - English
+    - Hindi
+    - Example
+
+    Question:
+    {question}
     """
 
     try:
         return g4f.ChatCompletion.create(
             model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
-            timeout=30
+            messages=[{"role": "user", "content": prompt}]
         )
     except:
-        return None
+        return "⚠️ AI error"
