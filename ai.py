@@ -1,19 +1,30 @@
 import g4f
 
 def generate_qa(content):
-    prompt = f"""
-    Create 5 revision questions with answers from this:
+    try:
+        prompt = f"""
+        You are a teacher.
 
-    {content[:3000]}
+        Create 5 revision questions with answers from the content below.
 
-    Format:
-    Q1:
-    A1:
-    """
+        Keep it simple and exam-focused.
 
-    response = g4f.ChatCompletion.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}]
-    )
+        Content:
+        {content[:3000]}
 
-    return response
+        Format:
+        Q1:
+        A1:
+        """
+
+        response = g4f.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            timeout=30
+        )
+
+        return response
+
+    except Exception as e:
+        print("AI ERROR:", e)
+        return None
