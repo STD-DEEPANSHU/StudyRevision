@@ -1,61 +1,82 @@
 import telebot
-import time
+import os
 
-from config import BOT_TOKEN, CHAT_ID
-from reader import read_website
+from config import BOT_TOKEN
+from database import save_user, add_question, get_question
+from reader import read_pdf, read_website
+from ocr import read_image
 from ai import generate_qa
-from database import add_questions, get_question
-from scheduler import start_scheduler, can_send
+from scheduler import start
 
-bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
+bot = telebot.TeleBot(BOT_TOKEN)
 
-# 🔥 LOAD CONTENT (EDIT THIS)
-def load_content():
-    print("Loading content...")
+# 📩 START
+@bot.message_handler(commands=['start'])
+def start_cmd(message):
+    user_id = message.from_user.id
+    save_user(user_id)
+    bot.reply_to(message, "✅ You are registered for auto revision!")
 
-    text = read_website("https://example.com")
+# 📄 HANDLE TEXT / LINK
+@bot.message_handler(func=lambda m: True, content_types=['text'])
+def handle_text(message):
+    user_id = message.from_user.id
+    text = message.text
 
-    if not text:
-        print("No content found")
-        return
+    if "http" in text:
+        content = read_website(text)
+    else:
+        content = text
 
+    qa = generate_qa(content)
+
+    if qa:
+        add_question(user_id, qa)
+        bot.reply_to(message, "✅ Questions generated!")
+    else:
+        bot.reply_to(message, "❌ AI failed")
+
+# 📄 HANDLE PDF
+@bot.message_handler(content_types=['document'])
+def handle_doc(message):
+    file = bot.get_file(message.document.file_id)
+    downloaded = bot.download_file(file.file_path)
+
+    path = f"{message.document.file_name}"
+    with open(path, "wb") as f:
+        f.write(downloaded)
+
+    text = read_pdf(path)
     qa = generate_qa(text)
 
     if qa:
-        add_questions(qa)
-        print("Q&A Generated")
-    else:
-        print("AI failed")
+        add_question(message.from_user.id, qa)
+        bot.reply_to(message, "✅ PDF processed!")
 
+# 🖼 IMAGE OCR
+@bot.message_handler(content_types=['photo'])
+def handle_img(message):
+    file = bot.get_file(message.photo[-1].file_id)
+    downloaded = bot.download_file(file.file_path)
 
-# 📤 SEND FUNCTION
-def send_revision():
-    try:
-        if not can_send():
-            return
+    path = "img.jpg"
+    with open(path, "wb") as f:
+        f.write(downloaded)
 
-        q = get_question()
+    text = read_image(path)
+    qa = generate_qa(text)
 
-        if not q:
-            bot.send_message(CHAT_ID, "⚠️ No questions available yet")
-            return
+    if qa:
+        add_question(message.from_user.id, qa)
+        bot.reply_to(message, "✅ Image processed!")
 
-        bot.send_message(CHAT_ID, f"📚 Revision Time:\n\n{q}")
+# 📤 SEND REVISION
+def send_revision_to_user(user_id):
+    q = get_question(user_id)
+    if q:
+        bot.send_message(user_id, f"📚 Revision:\n\n{q}")
 
-    except Exception as e:
-        print("SEND ERROR:", e)
-
-
-# 🚀 START SYSTEM
-if __name__ == "__main__":
-    load_content()
-    start_scheduler(send_revision)
-
-    print("🤖 Bot Running...")
-
-    while True:
-        try:
-            bot.infinity_polling(timeout=60, long_polling_timeout=30)
-        except Exception as e:
-            print("Polling Error:", e)
-            time.sleep(10)
+# 🚀 START
+start()
+print("🤖 Running...")
+bot.infinity_polling()
