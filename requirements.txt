@@ -1,0 +1,6 @@
+pyTelegramBotAPI
+pdfplumber
+requests
+beautifulsoup4
+apscheduler
+g4f
