@@ -1,82 +1,67 @@
 import telebot
-import os
 
 from config import BOT_TOKEN
-from database import save_user, add_question, get_question
+from database import add_user, add_questions, get_revision, update_question, save_memory, get_memory
 from reader import read_pdf, read_website
-from ocr import read_image
-from ai import generate_qa
+from ai import generate_qa, ask_ai
 from scheduler import start
 
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
 
-# 📩 START
 @bot.message_handler(commands=['start'])
 def start_cmd(message):
-    user_id = message.from_user.id
-    save_user(user_id)
-    bot.reply_to(message, "✅ You are registered for auto revision!")
+    add_user(message.from_user.id)
+    bot.reply_to(message, "✅ AI Revision Bot Activated")
 
-# 📄 HANDLE TEXT / LINK
-@bot.message_handler(func=lambda m: True, content_types=['text'])
+@bot.message_handler(content_types=['text'])
 def handle_text(message):
     user_id = message.from_user.id
     text = message.text
 
+    save_memory(user_id, f"user: {text}")
+
+    # WEBSITE
     if "http" in text:
         content = read_website(text)
-    else:
-        content = text
+        qa = generate_qa(content)
 
-    qa = generate_qa(content)
+        if qa:
+            add_questions(user_id, qa)
+            bot.reply_to(message, "✅ Content added for revision")
+        return
 
-    if qa:
-        add_question(user_id, qa)
-        bot.reply_to(message, "✅ Questions generated!")
-    else:
-        bot.reply_to(message, "❌ AI failed")
+    # CHATBOT
+    memory = get_memory(user_id)
+    answer = ask_ai(memory, text)
 
-# 📄 HANDLE PDF
+    save_memory(user_id, f"bot: {answer}")
+    bot.reply_to(message, answer)
+
+
 @bot.message_handler(content_types=['document'])
-def handle_doc(message):
+def handle_pdf(message):
     file = bot.get_file(message.document.file_id)
-    downloaded = bot.download_file(file.file_path)
+    data = bot.download_file(file.file_path)
 
-    path = f"{message.document.file_name}"
-    with open(path, "wb") as f:
-        f.write(downloaded)
+    with open("temp.pdf", "wb") as f:
+        f.write(data)
 
-    text = read_pdf(path)
+    text = read_pdf("temp.pdf")
     qa = generate_qa(text)
 
     if qa:
-        add_question(message.from_user.id, qa)
-        bot.reply_to(message, "✅ PDF processed!")
+        add_questions(message.from_user.id, qa)
+        bot.reply_to(message, "✅ PDF processed & added")
 
-# 🖼 IMAGE OCR
-@bot.message_handler(content_types=['photo'])
-def handle_img(message):
-    file = bot.get_file(message.photo[-1].file_id)
-    downloaded = bot.download_file(file.file_path)
 
-    path = "img.jpg"
-    with open(path, "wb") as f:
-        f.write(downloaded)
-
-    text = read_image(path)
-    qa = generate_qa(text)
-
-    if qa:
-        add_question(message.from_user.id, qa)
-        bot.reply_to(message, "✅ Image processed!")
-
-# 📤 SEND REVISION
 def send_revision_to_user(user_id):
-    q = get_question(user_id)
-    if q:
-        bot.send_message(user_id, f"📚 Revision:\n\n{q}")
+    qs = get_revision(user_id)
 
-# 🚀 START
+    for q in qs:
+        bot.send_message(user_id, f"📚 <b>Revision</b>\n\n{q['text']}")
+        update_question(q)
+
+
 start()
-print("🤖 Running...")
+print("🤖 Running V3 AI Bot...")
 bot.infinity_polling()
